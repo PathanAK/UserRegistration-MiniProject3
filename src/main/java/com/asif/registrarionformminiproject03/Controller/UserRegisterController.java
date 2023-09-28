@@ -4,6 +4,7 @@ import com.asif.registrarionformminiproject03.Binding.LoginForm;
 import com.asif.registrarionformminiproject03.Binding.UnlockAccountForm;
 import com.asif.registrarionformminiproject03.Binding.UserForm;
 import com.asif.registrarionformminiproject03.Service.UserMgmtService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.*;
 @RequestMapping("/api")
 public class UserRegisterController {
 
+    @Autowired
     private UserMgmtService userMgmtService;
 
     @PostMapping("/login")

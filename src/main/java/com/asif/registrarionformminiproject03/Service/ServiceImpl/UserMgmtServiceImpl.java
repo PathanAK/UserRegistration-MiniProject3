@@ -12,21 +12,33 @@ import com.asif.registrarionformminiproject03.Repository.CountryRepository;
 import com.asif.registrarionformminiproject03.Repository.StateRepository;
 import com.asif.registrarionformminiproject03.Repository.UserRepository;
 import com.asif.registrarionformminiproject03.Service.UserMgmtService;
+import com.asif.registrarionformminiproject03.Utils.EmailUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
 
 @Service
 public class UserMgmtServiceImpl implements UserMgmtService {
 
+    @Autowired
     private UserRepository userRepo;
+    @Autowired
     private CountryRepository countryRepo;
+    @Autowired
     private StateRepository stateRepo;
+    @Autowired
     private CityRepository cityRepo;
+    @Autowired
+    private EmailUtils emailUtils;
 
     @Override
     public String checkEmail(String email) {
@@ -81,7 +93,10 @@ public class UserMgmtServiceImpl implements UserMgmtService {
         userEntity.setAccountStatus("Locked");
         userRepo.save(userEntity);
         //Send Email to unlock the account
-
+        String to = user.getEmail();
+        String subject = "Registration Email";
+        String body = readEmailBody("RES_EMAIL_BODY.txt", userEntity);
+        emailUtils.sendEmail(to, subject, body);
         return "User create Successfully";
     }
 
@@ -89,7 +104,7 @@ public class UserMgmtServiceImpl implements UserMgmtService {
     public String unlockAccount(UnlockAccountForm unlockAccountForm) {
         String email = unlockAccountForm.getEmail();
         UserDetails user = userRepo.findByEmail(email);
-        if(user.getPassword().equals(unlockAccountForm.getTempPassword())) {
+        if (user.getPassword().equals(unlockAccountForm.getTempPassword())) {
             user.setPassword(unlockAccountForm.getNewPassword());
             user.setAccountStatus("Unlocked");
             userRepo.save(user);
@@ -102,10 +117,10 @@ public class UserMgmtServiceImpl implements UserMgmtService {
     public String login(LoginForm login) {
 
         UserDetails user = userRepo.findByEmailAndPassword(login.getEmail(), login.getPassword());
-        if(user == null) {
+        if (user == null) {
             return "Invalid Credentials";
         }
-        if(user.getAccountStatus().equals("Locked")) {
+        if (user.getAccountStatus().equals("Locked")) {
             return "Account is locked";
         }
         return "Login Successfully";
@@ -114,13 +129,15 @@ public class UserMgmtServiceImpl implements UserMgmtService {
     @Override
     public String forgetPassword(String email) {
         UserDetails user = userRepo.findByEmail(email);
-        if(user == null) {
+        if (user == null) {
             return "User Not Found";
         }
         //Send the email with password
-        return null;
+        String subject = "Recover Password";
+        String body = readEmailBody("FORGET_PWD_BODY.txt", user);
+        emailUtils.sendEmail(email, subject, body);
+        return "Email was sent";
     }
-
 
     public String generatePassword() {
         String text = "ABCDEFGHIJLLMNOPQRSTUVWXYZ1234567890";
@@ -130,6 +147,24 @@ public class UserMgmtServiceImpl implements UserMgmtService {
         for (int i = 1; i <= pwdLength; i++) {
             int index = random.nextInt(text.length());
             sb.append(text.charAt(index));
+        }
+        return sb.toString();
+    }
+
+    private String readEmailBody(String fileName, UserDetails user) {
+
+        StringBuffer sb = new StringBuffer();
+
+        try (Stream<String> lines = Files.lines(Paths.get(fileName))) {
+            lines.forEach(line -> {
+                line = line.replace("$(FNAME}", user.getUserName());
+                line = line.replace("${LNAME}", user.getAccountStatus());
+                line = line.replace("{TEMP_PWD}", user.getPassword());
+                line = line.replace("${EMAIL}", user.getEmail());
+                line = line.replace("${PWD}", user.getPassword());
+                sb.append(line);
+            });
+        } catch (Exception e) {
         }
         return sb.toString();
     }
